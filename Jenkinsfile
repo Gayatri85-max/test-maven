@@ -1,18 +1,43 @@
+
 pipeline {
     agent any
 
+    environment {
+        GITHUB_CREDS = credentials('github-packages-cred')
+        JAVA_HOME    = tool name: 'jdk11'
+        MAVEN_HOME   = tool name: 'maven3'
+        PATH         = "${JAVA_HOME}/bin:${PATH}"
+    }
+
     stages {
-        stage('Build') {
+
+        stage('Checkout Code') {
             steps {
-                sh 'mvn clean compile'
+                checkout scm
             }
         }
 
-        stage('Test') {
+        stage('Build & Deploy') {
             steps {
-                sh 'mvn test'
+                configFileProvider([configFile(fileId: 'maven-github-settings', variable: 'MAVEN_SETTINGS')]) {
+                    sh """
+                        export GH_USER=${GITHUB_CREDS_USR}
+                        export GH_TOKEN=${GITHUB_CREDS_PSW}
+
+                        ${MAVEN_HOME}/bin/mvn -s $MAVEN_SETTINGS -B clean package
+                        ${MAVEN_HOME}/bin/mvn -s $MAVEN_SETTINGS -B deploy
+                    """
+                }
             }
         }
+    }
 
+    post {
+        success {
+            echo "✅ Build and deployment to GitHub Packages completed successfully."
+        }
+        failure {
+            echo "❌ Pipeline failed. Check the console output for details."
+        }
     }
 }
