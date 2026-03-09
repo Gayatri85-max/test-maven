@@ -5,3 +5,4 @@ public class App {
         System.out.println("Hello from Maven build deployed to GitHub Packages!");
     }
 }
+
